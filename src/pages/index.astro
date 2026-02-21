@@ -21,63 +21,186 @@ try {
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
     <title>Oyster Bay 7-Day Weather</title>
     <style>
-      :root { font-family: Inter, system-ui, sans-serif; color-scheme: light dark; }
-      body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
-      h1 { margin-bottom: .3rem; }
-      .muted { opacity: .8; font-size: .95rem; }
-      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-      th, td { border-bottom: 1px solid #8884; text-align: left; padding: .65rem .5rem; }
-      .card { border: 1px solid #8884; border-radius: 12px; padding: 1rem; margin-top: 1rem; }
-      .small { font-size: .9rem; opacity: .75; margin-top: .8rem; }
+      :root {
+        --bg: #0b1220;
+        --panel: #131d32;
+        --panel-soft: #182743;
+        --text: #e9eefb;
+        --muted: #b2bfdc;
+        --accent: #7cc7ff;
+        --border: rgba(255, 255, 255, 0.1);
+        --chip: rgba(124, 199, 255, 0.12);
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f4f8ff;
+          --panel: #ffffff;
+          --panel-soft: #f7faff;
+          --text: #15203b;
+          --muted: #4e5f86;
+          --accent: #006ee6;
+          --border: rgba(21, 32, 59, 0.12);
+          --chip: rgba(0, 110, 230, 0.09);
+        }
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background:
+          radial-gradient(1200px 600px at 20% -10%, rgba(124, 199, 255, 0.18), transparent),
+          radial-gradient(900px 500px at 90% 0%, rgba(124, 199, 255, 0.12), transparent),
+          var(--bg);
+        color: var(--text);
+      }
+
+      .container {
+        width: min(1080px, 100% - 1.25rem);
+        margin: 1rem auto 2rem;
+      }
+
+      .hero {
+        background: linear-gradient(165deg, var(--panel), var(--panel-soft));
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1rem;
+        box-shadow: 0 12px 34px rgba(0, 0, 0, 0.16);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.2rem, 4vw, 2rem);
+        line-height: 1.2;
+      }
+
+      .subtitle {
+        margin: .55rem 0 0;
+        color: var(--muted);
+        font-size: .92rem;
+        line-height: 1.45;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: .8rem;
+        margin-top: .9rem;
+      }
+
+      .day {
+        background: linear-gradient(180deg, var(--panel), var(--panel-soft));
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: .9rem;
+      }
+
+      .day-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: .5rem;
+      }
+
+      .day-title {
+        margin: 0;
+        font-size: 1.04rem;
+      }
+
+      .summary {
+        margin: .4rem 0 .75rem;
+        color: var(--muted);
+        font-size: .95rem;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .45rem;
+      }
+
+      .chip {
+        border: 1px solid var(--border);
+        background: var(--chip);
+        border-radius: 999px;
+        padding: .32rem .62rem;
+        font-size: .84rem;
+        white-space: nowrap;
+      }
+
+      .small {
+        margin: .9rem .2rem 0;
+        color: var(--muted);
+        font-size: .82rem;
+      }
+
+      .error {
+        margin-top: .9rem;
+        background: #b4231820;
+        border: 1px solid #b4231870;
+        border-radius: 14px;
+        padding: .85rem;
+      }
+
+      @media (min-width: 740px) {
+        .container { width: min(1080px, 100% - 2rem); margin-top: 1.4rem; }
+        .hero { padding: 1.25rem 1.3rem; }
+        .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+      }
+
+      @media (min-width: 1020px) {
+        .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
     </style>
   </head>
+
   <body>
-    <h1>Oyster Bay Weather (Next 7 Days)</h1>
-    <p class="muted">
-      Source: Bureau of Meteorology (bom.gov.au). Forecast uses BOM's Sydney location feed,
-      the nearest city forecast point for Oyster Bay.
-    </p>
+    <main class="container">
+      <section class="hero">
+        <h1>Oyster Bay Weather · Next 7 Days</h1>
+        <p class="subtitle">
+          Source: Bureau of Meteorology (bom.gov.au). Forecast uses BOM’s Sydney location feed,
+          the nearest city forecast point for Oyster Bay.
+        </p>
 
-    {
-      loadError ? (
-        <div class="card">
-          <strong>Couldn’t load BOM forecast at build time.</strong>
-          <p>{loadError}</p>
-        </div>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Day</th>
-              <th>Summary</th>
-              <th>Min</th>
-              <th>Max</th>
-              <th>Rain chance</th>
-              <th>Rainfall</th>
-            </tr>
-          </thead>
-          <tbody>
-            {forecasts.map((f: any) => (
-              <tr>
-                <td>{f.dayLabel}</td>
-                <td>{f.summary ?? "—"}</td>
-                <td>{f.min ? `${f.min}°C` : "—"}</td>
-                <td>{f.max ? `${f.max}°C` : "—"}</td>
-                <td>{f.rainChance ?? "—"}</td>
-                <td>{f.rain ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )
-    }
+        {
+          loadError ? (
+            <div class="error">
+              <strong>Couldn’t load BOM forecast at build time.</strong>
+              <p>{loadError}</p>
+            </div>
+          ) : (
+            <section class="grid" aria-label="7 day weather forecast">
+              {forecasts.map((f: any) => (
+                <article class="day">
+                  <div class="day-head">
+                    <h2 class="day-title">{f.dayLabel}</h2>
+                  </div>
+                  <p class="summary">{f.summary ?? "No summary available"}</p>
 
-    <p class="small">
-      Built: {fetchedAt.toLocaleString("en-AU", { timeZone: "Australia/Sydney" })} (Sydney time)
-    </p>
+                  <div class="chips">
+                    <span class="chip">🌡️ Min {f.min ? `${f.min}°C` : "—"}</span>
+                    <span class="chip">☀️ Max {f.max ? `${f.max}°C` : "—"}</span>
+                    <span class="chip">🌧️ Rain chance {f.rainChance ?? "—"}</span>
+                    <span class="chip">💧 Rainfall {f.rain ?? "—"}</span>
+                  </div>
+                </article>
+              ))}
+            </section>
+          )
+        }
+
+        <p class="small">
+          Last built: {fetchedAt.toLocaleString("en-AU", { timeZone: "Australia/Sydney" })} (Sydney time)
+        </p>
+      </section>
+    </main>
   </body>
 </html>
