@@ -1,0 +1,58 @@
+name: Daily weather rebuild
+
+on:
+  schedule:
+    # Run at both 19:00 and 20:00 UTC, then gate to 06:00 Australia/Sydney
+    # so it stays correct across AEST/AEDT daylight savings changes.
+    - cron: "0 19 * * *"
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Sydney local hour
+        id: gate
+        run: |
+          hour=$(TZ=Australia/Sydney date +%H)
+          if [ "$hour" = "06" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        if: steps.gate.outputs.run == 'true'
+        run: npm ci
+
+      - name: Build site
+        if: steps.gate.outputs.run == 'true'
+        run: npm run build
+
+      - name: Commit updated docs
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: daily weather rebuild"
+          git push
