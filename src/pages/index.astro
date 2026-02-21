@@ -1,17 +1,83 @@
 ---
+import { parseSydneyForecastFromBomXml } from "../lib/bom";
 
+const BOM_URL = "https://www.bom.gov.au/fwo/IDN11060.xml";
+const fetchedAt = new Date();
+
+let forecasts = [];
+let loadError = "";
+
+try {
+  const res = await fetch(BOM_URL);
+  if (!res.ok) throw new Error(`BOM responded ${res.status}`);
+  const xml = await res.text();
+  forecasts = parseSydneyForecastFromBomXml(xml);
+  if (!forecasts.length) throw new Error("No forecast records found for Sydney location block.");
+} catch (err) {
+  loadError = err instanceof Error ? err.message : "Unknown error";
+}
 ---
 
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Oyster Bay 7-Day Weather</title>
+    <style>
+      :root { font-family: Inter, system-ui, sans-serif; color-scheme: light dark; }
+      body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+      h1 { margin-bottom: .3rem; }
+      .muted { opacity: .8; font-size: .95rem; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border-bottom: 1px solid #8884; text-align: left; padding: .65rem .5rem; }
+      .card { border: 1px solid #8884; border-radius: 12px; padding: 1rem; margin-top: 1rem; }
+      .small { font-size: .9rem; opacity: .75; margin-top: .8rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Oyster Bay Weather (Next 7 Days)</h1>
+    <p class="muted">
+      Source: Bureau of Meteorology (bom.gov.au). Forecast uses BOM's Sydney location feed,
+      the nearest city forecast point for Oyster Bay.
+    </p>
+
+    {
+      loadError ? (
+        <div class="card">
+          <strong>Couldn’t load BOM forecast at build time.</strong>
+          <p>{loadError}</p>
+        </div>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Summary</th>
+              <th>Min</th>
+              <th>Max</th>
+              <th>Rain chance</th>
+              <th>Rainfall</th>
+            </tr>
+          </thead>
+          <tbody>
+            {forecasts.map((f: any) => (
+              <tr>
+                <td>{f.dayLabel}</td>
+                <td>{f.summary ?? "—"}</td>
+                <td>{f.min ? `${f.min}°C` : "—"}</td>
+                <td>{f.max ? `${f.max}°C` : "—"}</td>
+                <td>{f.rainChance ?? "—"}</td>
+                <td>{f.rain ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )
+    }
+
+    <p class="small">
+      Built: {fetchedAt.toLocaleString("en-AU", { timeZone: "Australia/Sydney" })} (Sydney time)
+    </p>
+  </body>
 </html>
